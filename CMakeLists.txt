@@ -20,6 +20,8 @@ find_package(rcl_interfaces REQUIRED)
 find_package(mcap_vendor REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(backward_ros REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geographic_msgs REQUIRED)
 find_package(foxglove_sdk_vendor REQUIRED)
 set(mcap_LIBRARIES mcap_vendor::mcap)
 set(mcap_INCLUDE_DIRS ${mcap_vendor_INCLUDE_DIRS})
@@ -35,8 +37,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-add_library(${PROJECT_NAME}_tools SHARED src/helpers.cpp)
+add_library(${PROJECT_NAME}_tools SHARED
+  src/helpers.cpp
+  src/ros_topic_discovery.cpp)
 target_link_libraries(${PROJECT_NAME}_tools
+  ${rclcpp_TARGETS}
   ${data_tamer_cpp_TARGETS}
   ${nlohmann_json_LIBRARIES}
   ${PROTOBUF_SHARED_LIB}
@@ -72,6 +77,7 @@ target_link_libraries(mcap_sink
 
 add_library(foxglove_relay SHARED src/foxglove_relay.cpp)
 rclcpp_components_register_node(foxglove_relay PLUGIN "data_tamer_tools::DtRos2ToFoxgloveBridge" EXECUTABLE foxglove_relay_node)
+add_dependencies(foxglove_relay ${PROJECT_NAME})
 target_link_libraries(foxglove_relay
   foxglove_sdk_vendor::foxglove_sdk
   ${data_tamer_cpp_TARGETS}
@@ -79,8 +85,11 @@ target_link_libraries(foxglove_relay
   ${rclcpp_components_TARGETS}
   ${nlohmann_json_LIBRARIES}
   ${rcl_interfaces_TARGETS}
+  ${sensor_msgs_TARGETS}
+  ${geographic_msgs_TARGETS}
   ${PROJECT_NAME}_tools
-  ${PROTOBUF_SHARED_LIB})
+  ${PROTOBUF_SHARED_LIB}
+  ${cpp_typesupport_target})
 target_include_directories(foxglove_relay
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -124,6 +133,7 @@ target_link_libraries(rosout_logger_component
   ${rclcpp_components_TARGETS}
   ${rcl_interfaces_TARGETS}
   ${mcap_LIBRARIES}
+  ${PROJECT_NAME}_tools
   ${cpp_typesupport_target}
 )
 target_include_directories(rosout_logger_component
@@ -176,7 +186,7 @@ install(
 )
 
 ament_export_targets(${PROJECT_NAME}Targets)
-ament_export_dependencies(data_tamer_cpp rclcpp rclcpp_components nlohmann_json foxglove_sdk_vendor)
+ament_export_dependencies(data_tamer_cpp rclcpp rclcpp_components nlohmann_json foxglove_sdk_vendor sensor_msgs geographic_msgs)
 ament_export_libraries(mcap_sink foxglove_relay)
 ament_package()
 
