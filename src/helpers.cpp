@@ -1,4 +1,3 @@
-
 #include <data_tamer_tools/helpers.hpp>
 #include <google/protobuf/descriptor.pb.h>
 #include <mcap/reader.hpp>

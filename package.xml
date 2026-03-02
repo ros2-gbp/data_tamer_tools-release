@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>data_tamer_tools</name>
-  <version>0.2.1</version>
+  <version>0.3.0</version>
   <description>Set of tools for using Foxglove with data tamer</description>
   <maintainer email="jlack1987@gmail.com">Jordan Lack</maintainer>
   <license>MIT</license>
@@ -20,6 +20,8 @@
   <depend>protobuf-dev</depend>
   <depend>backward_ros</depend>
   <depend>foxglove_sdk_vendor</depend>
+  <depend>geographic_msgs</depend>
+  <depend>sensor_msgs</depend>
   <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_cmake_cppcheck</test_depend>

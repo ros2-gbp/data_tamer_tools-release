@@ -11,6 +11,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rcl_interfaces/msg/log.hpp>
 #include <data_tamer_tools/msg/log_dir.hpp>
+#include <data_tamer_tools/ros_topic_discovery.hpp>
 
 #include <mcap/writer.hpp>
 #include <mcap/reader.hpp>
@@ -43,21 +44,24 @@ class RosoutLogger : public rclcpp::Node
         append_timestamp_ = declare_parameter<bool>("append_timestamp", true);
 
         // control topic name (latched): when a String(dir) arrives, rotate to <dir>/rosout.mcap
-        control_topic_ = declare_parameter<std::string>("rotate_dir_topic", "/data_tamer/rotate_dir");
+        control_topic_ = declare_parameter<std::string>("rotate_dir_topic", "");
 
         // --- subs ---
         sub_ = create_subscription<rcl_interfaces::msg::Log>(topic_, rclcpp::SystemDefaultsQoS(), std::bind(&RosoutLogger::onLog, this, std::placeholders::_1));
 
-        // latched control subscriber
-        rclcpp::QoS latched_qos(1);
-        latched_qos.transient_local().reliable();
-        rotate_sub_ = create_subscription<data_tamer_tools::msg::LogDir>(control_topic_, latched_qos, std::bind(&RosoutLogger::onRotateDir, this, std::placeholders::_1));
+        setupRotationControl();
+        if (!rotate_sub_ && control_topic_.empty())
+        {
+            RCLCPP_INFO(get_logger(), "rotate_dir_topic empty; waiting to auto-discover data_tamer_tools/msg/LogDir topic for rotation");
+            rotate_discovery_timer_ = create_wall_timer(1s, [this]() { this->setupRotationControl(); });
+        }
 
         // --- file (time-stamped initial file) ---
         openWriterAtPath(makeFilename(), /*first_open=*/true);
 
+        const char* control_str = control_topic_.empty() ? "<auto-discovery>" : control_topic_.c_str();
         RCLCPP_INFO(get_logger(), "rosout_mcap_logger started: topic='%s' dir='%s' base='%s' comp='%s' chunk=%d control='%s'", topic_.c_str(), out_dir_.c_str(),
-                    output_base_.c_str(), compression_.c_str(), chunk_size_, control_topic_.c_str());
+                    output_base_.c_str(), compression_.c_str(), chunk_size_, control_str);
     }
 
     ~RosoutLogger() override
@@ -87,6 +91,7 @@ class RosoutLogger : public rclcpp::Node
 
     rclcpp::Subscription<rcl_interfaces::msg::Log>::SharedPtr sub_;
     rclcpp::Subscription<data_tamer_tools::msg::LogDir>::SharedPtr rotate_sub_;
+    rclcpp::TimerBase::SharedPtr rotate_discovery_timer_;
 
     // ---------- helpers ----------
     std::string makeFilename()
@@ -114,6 +119,35 @@ class RosoutLogger : public rclcpp::Node
             std::snprintf(buf, sizeof(buf), "unknown");
         }
         return std::string(buf);
+    }
+
+    void setupRotationControl()
+    {
+        if (rotate_sub_)
+        {
+            return;
+        }
+
+        std::string topic = control_topic_;
+        if (topic.empty())
+        {
+            std::optional<std::string> discovered = data_tamer_tools::discoverTopicByType(*this, "data_tamer_tools/msg/LogDir", get_logger(), "rotate_dir_topic");
+            if (!discovered.has_value())
+            {
+                return;
+            }
+            topic = discovered.value();
+            control_topic_ = topic;
+        }
+
+        rclcpp::QoS latched_qos(1);
+        latched_qos.transient_local().reliable();
+        rotate_sub_ = create_subscription<data_tamer_tools::msg::LogDir>(topic, latched_qos, std::bind(&RosoutLogger::onRotateDir, this, std::placeholders::_1));
+        RCLCPP_INFO(get_logger(), "Rotation control enabled via topic '%s'", topic.c_str());
+        if (rotate_discovery_timer_)
+        {
+            rotate_discovery_timer_->cancel();
+        }
     }
 
     static mcap::Compression toCompression(const std::string& s)
