@@ -19,6 +19,9 @@ A ROS2 component that bridges DataTamer data to Foxglove Studio for real-time vi
 
 **Features:**
 - Automatically discovers DataTamer topics (`/data_tamer/schema`, `/data_tamer/schemas`, `/data_tamer/snapshot`)
+- Automatically discovers `sensor_msgs/msg/NavSatFix` topics and relays each source as its own `foxglove.LocationFix` channel (Map track)
+- Automatically discovers `geographic_msgs/msg/GeoPath` topics and relays each source as `foxglove.GeoJSON` (Map overlay)
+- Optional MCAP recording of selected Foxglove schemas (`foxglove.LocationFix` + `foxglove.GeoJSON`) for offline playback in Foxglove
 - Supports both JSON and Protocol Buffers encoding for Foxglove visualization
 - Converts DataTamer schemas to JSON Schema or Protocol Buffers descriptor format
 - Creates Foxglove WebSocket server for real-time data streaming
@@ -64,6 +67,28 @@ ros2 run data_tamer_tools foxglove_relay --ros-args \
   - How often the relay checks for channels that should be evicted
 - `discovery_sec` (int, default: 5): Interval in seconds for topic discovery
   - How often the relay scans for new DataTamer topics to subscribe to
+- `navsat_ttl_sec` (int, default: 30): Time-to-live for NavSatFix sources; stale sources are pruned from the relay’s discovered LocationFix tracks
+- `geopath_ttl_sec` (int, default: 0): Time-to-live for GeoPath sources (0 disables pruning)
+- `navsat_qos` (string, default: "sensor"): QoS profile for NavSatFix subscriptions. Accepts `sensor` (or `sensor_data`), `system_default` (or `default`), `best_effort`, or `reliable`.
+- `location_fix_prefix` (string, default: "/locations"): Prefix for relayed per-source `foxglove.LocationFix` topics
+- `geojson_prefix` (string, default: "/geojson"): Prefix for relayed per-source `foxglove.GeoJSON` topics
+
+**Map Topic Mapping:**
+- A discovered `sensor_msgs/msg/NavSatFix` topic like `/gps/fix` is relayed as a per-source `foxglove.LocationFix` topic at `/locations/gps/fix` (prefix is configurable via `location_fix_prefix`)
+- A discovered `geographic_msgs/msg/GeoPath` topic like `/planner/path` is relayed as `foxglove.GeoJSON` at `/geojson/planner/path` (prefix is configurable via `geojson_prefix`)
+- Each GeoPath is rendered as GeoJSON (FeatureCollection) containing a LineString for the path and Point features for start/goal; colors are deterministic per topic
+
+**Relay MCAP Recording (Foxglove schemas only):**
+- `enable_mcap` (bool, default: false): Record `foxglove.LocationFix` + `foxglove.GeoJSON` to an MCAP file
+- `logdir` (string, default: "."): Directory for the initial relay MCAP file
+- `mcap_filename` (string, default: "foxglove_relay.mcap"): Relay MCAP filename
+- `mcap_append_timestamp` (bool, default: true): Prefix timestamp like `YYYY-MM-DD_HH-MM-SS_` to the relay MCAP filename
+- `mcap_profile` (string, default: "protobuf"): MCAP profile string passed to the Foxglove SDK writer
+- `mcap_truncate` (bool, default: false): If true, overwrite an existing relay MCAP file on name collision
+- `mcap_use_chunks` (bool, default: true): Enable chunking (batch writes) in the relay MCAP output
+- `mcap_chunk_size` (int, default: 0): Chunk size in bytes (0 = SDK default)
+- `mcap_compression` (string, default: "zstd"): Compression type: `none`, `zstd`, or `lz4`
+- `rotate_dir_topic` (string, default: ""): Rotation topic override (empty = auto-discover `data_tamer_tools/msg/LogDir` by type)
 
 **ROS Log Integration:**
 - `enable_rosout` (bool, default: true): Enable relaying of ROS logs to Foxglove
@@ -71,11 +96,18 @@ ros2 run data_tamer_tools foxglove_relay --ros-args \
   - `false`: Disable ROS log relaying
 - `rosout_topic` (string, default: "/rosout"): ROS topic name for log messages
 
-**Foxglove Studio Connection:**
+**Foxglove Studio Connection (Live):**
 1. Open Foxglove Studio
-2. Add a "Raw Messages" panel
-3. Connect to `ws://localhost:8765` (or your configured host:port)
-4. Select the desired DataTamer channel to visualize
+2. Connect to `ws://localhost:8765` (or your configured host:port)
+3. Add a **Map** panel to visualize:
+   - GPS tracks from `foxglove.LocationFix` topics (default prefix: `/locations/...`)
+   - Paths/overlays from `foxglove.GeoJSON` topics (default prefix: `/geojson/...`)
+4. Add a **Raw Messages** panel to inspect the relayed DataTamer channels
+
+**Foxglove Studio Connection (Offline):**
+1. Enable relay MCAP recording (`enable_mcap:=true`) or use the bringup launch file options
+2. In Foxglove Studio: File → Open local file → select the relay MCAP file
+3. Add a **Map** panel (GeoJSON overlays + LocationFix tracks) and any other panels you need
 
 **Encoding Notes:**
 - **Protocol Buffers mode** (`use_protobuf:=true`): More efficient, smaller payloads, better performance
@@ -232,7 +264,7 @@ ros2 run data_tamer_tools rosout_logger --ros-args \
   -p output_dir:=/logs \
   -p compression:=zstd \
   -p chunk_size:=0 \
-  -p rotate_dir_topic:=/data_tamer/rotate_dir
+  -p rotate_dir_topic:=''
 ```
 
 **Parameters:**
@@ -241,16 +273,17 @@ ros2 run data_tamer_tools rosout_logger --ros-args \
 - `output_dir` (string, default: "."): Directory for initial MCAP file
 - `compression` (string, default: "zstd"): Compression type (none, zstd, or lz4)
 - `chunk_size` (int, default: 0): Chunk size in bytes (0 = no chunking)
-- `rotate_dir_topic` (string, default: "/data_tamer/rotate_dir"): Topic to subscribe for rotation commands
+- `append_timestamp` (bool, default: true): Append a timestamp to the output filename
+- `rotate_dir_topic` (string, default: ""): Rotation topic override (empty = auto-discover `data_tamer_tools/msg/LogDir` by type)
 
 **How it works:**
 1. On startup, creates a timestamped MCAP file: `<output_dir>/<output_base>_YYYYMMDD_HHMMSS.mcap`
 2. Subscribes to `/rosout` and records all log messages in Foxglove Log format
-3. Listens to the rotation topic (latched/transient_local)
+3. Listens to the rotation topic (latched/transient_local), auto-discovered by type if `rotate_dir_topic` is empty
 4. When a `LogDir` message is received with a new directory:
    - Closes the current MCAP file
    - Creates the new directory if needed
-   - Opens a new file at `<new_dir>/rosout.mcap` (fixed filename for rotated logs)
+   - Opens a new file at `<new_dir>/<output_base>_YYYYMMDD_HHMMSS.mcap` (or `<new_dir>/<output_base>.mcap` if `append_timestamp` is false)
    - Continues recording with monotonic sequence numbers
 
 **Foxglove Integration:**
@@ -373,12 +406,20 @@ The launch file creates a multi-threaded composable node container (`component_c
 - `relay_discover_sec` (int, default: 5): Period for rediscovering DataTamer snapshot topics
 - `relay_enable_rosout` (bool, default: true): Enable relaying /rosout to Foxglove
 - `relay_use_protobuf` (bool, default: true): Use Protobuf encoding instead of JSON
+- `relay_enable_mcap` (bool, default: false): Record `foxglove.LocationFix` + `foxglove.GeoJSON` to an MCAP file from the relay
+- `relay_mcap_filename` (string, default: "foxglove_relay.mcap"): Relay MCAP filename (written under `logdir`)
+- `relay_mcap_append_timestamp` (bool, default: true): Prefix timestamp like `YYYY-MM-DD_HH-MM-SS_` to the relay MCAP filename
+- `relay_mcap_truncate` (bool, default: false): Overwrite relay MCAP file on collision
+- `relay_mcap_use_chunks` (bool, default: true): Enable chunking in relay MCAP output
+- `relay_mcap_chunk_size` (int, default: 0): Chunk size in bytes (0 = SDK default)
+- `relay_mcap_compression` (string, default: "zstd"): Compression type: `none`, `zstd`, or `lz4`
+- `relay_rotate_dir_topic` (string, default: ""): Rotation topic override for relay (empty = auto-discover `data_tamer_tools/msg/LogDir`)
 
 **Rosout Logger Parameters:**
 - `logger_output_base` (string, default: "rosout"): Base filename for MCAP output files
 - `logger_compression` (string, default: "zstd"): Compression type (none, zstd, or lz4)
 - `logger_chunk_size` (int, default: 0): MCAP chunk size in bytes (0 = no chunking)
-- `logger_rotate_dir_topic` (string, default: "/data_tamer/rotate_dir"): Topic for receiving rotation commands
+- `logger_rotate_dir_topic` (string, default: ""): Rotation topic override for rosout logger (empty = auto-discover `data_tamer_tools/msg/LogDir`)
 
 **Log Rotation Coordinator Parameters:**
 - `coordinator_rotate_topic` (string, default: "/data_tamer/rotate_dir"): Topic to publish rotation commands

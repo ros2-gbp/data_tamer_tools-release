@@ -3,13 +3,16 @@
 #include <data_tamer/data_tamer.hpp>
 #include <data_tamer_parser/data_tamer_parser.hpp>
 #include <nlohmann/json.hpp>
-
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/dynamic_message.h>
+
+#include <rclcpp/rclcpp.hpp>
 
 namespace data_tamer_tools
 {
