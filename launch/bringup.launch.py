@@ -29,7 +29,16 @@ def launch_setup(context, *args, **kwargs):
                             'discovery_sec': LaunchConfiguration('relay_discover_sec'),
                             'enable_rosout': LaunchConfiguration('relay_enable_rosout'),
                             'rosout_topic': LaunchConfiguration('rosout_topic'),
-                            'use_protobuf': LaunchConfiguration('relay_use_protobuf')
+                            'use_protobuf': LaunchConfiguration('relay_use_protobuf'),
+                            'enable_mcap': LaunchConfiguration('relay_enable_mcap'),
+                            'logdir': LaunchConfiguration('logdir'),
+                            'mcap_filename': LaunchConfiguration('relay_mcap_filename'),
+                            'mcap_append_timestamp': LaunchConfiguration('relay_mcap_append_timestamp'),
+                            'mcap_truncate': LaunchConfiguration('relay_mcap_truncate'),
+                            'mcap_use_chunks': LaunchConfiguration('relay_mcap_use_chunks'),
+                            'mcap_chunk_size': LaunchConfiguration('relay_mcap_chunk_size'),
+                            'mcap_compression': LaunchConfiguration('relay_mcap_compression'),
+                            'rotate_dir_topic': LaunchConfiguration('relay_rotate_dir_topic'),
                         }]
                     ),
                     # Rosout Logger - logs rosout messages to MCAP files
@@ -91,6 +100,22 @@ def generate_launch_description():
                               description='ROS topic to subscribe for logs (Foxglove relay)'),
         DeclareLaunchArgument('relay_use_protobuf', default_value='true',
                               description='Use protobuf encoding instead of JSON (true/false)'),
+        DeclareLaunchArgument('relay_enable_mcap', default_value='false',
+                              description='Enable MCAP recording from the Foxglove relay (true/false)'),
+        DeclareLaunchArgument('relay_mcap_filename', default_value='foxglove_relay.mcap',
+                              description='MCAP output filename for the Foxglove relay'),
+        DeclareLaunchArgument('relay_mcap_append_timestamp', default_value='true',
+                              description='Append a timestamp to the relay MCAP filename (true/false)'),
+        DeclareLaunchArgument('relay_mcap_truncate', default_value='false',
+                              description='Overwrite an existing relay MCAP file if the name collides (true/false)'),
+        DeclareLaunchArgument('relay_mcap_use_chunks', default_value='true',
+                              description='Use chunking in relay MCAP output (true/false)'),
+        DeclareLaunchArgument('relay_mcap_chunk_size', default_value='0',
+                              description='Relay MCAP chunk size in bytes (0 = SDK default)'),
+        DeclareLaunchArgument('relay_mcap_compression', default_value='zstd',
+                              description='Relay MCAP compression type: none, zstd, or lz4'),
+        DeclareLaunchArgument('relay_rotate_dir_topic', default_value='',
+                              description='Rotation topic override for relay (empty = auto-discover data_tamer_tools/msg/LogDir)'),
 
         # Rosout Logger parameters
         DeclareLaunchArgument('logger_output_base', default_value='rosout',
@@ -99,8 +124,8 @@ def generate_launch_description():
                               description='MCAP compression type: none, zstd, or lz4'),
         DeclareLaunchArgument('logger_chunk_size', default_value='0',
                               description='MCAP chunk size in bytes (0 = no chunking)'),
-        DeclareLaunchArgument('logger_rotate_dir_topic', default_value='/data_tamer/rotate_dir',
-                              description='Topic for receiving log rotation commands'),
+        DeclareLaunchArgument('logger_rotate_dir_topic', default_value='',
+                              description='Rotation topic override for rosout logger (empty = auto-discover data_tamer_tools/msg/LogDir)'),
 
         # Log Rotation Coordinator parameters
         DeclareLaunchArgument('coordinator_rotate_topic', default_value='/data_tamer/rotate_dir',

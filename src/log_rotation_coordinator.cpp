@@ -33,10 +33,11 @@ class LogRotationCoordinator : public rclcpp::Node
     }
 
   private:
-    void handle_rotate(const std::shared_ptr<data_tamer_tools::srv::Rotate::Request> req, std::shared_ptr<data_tamer_tools::srv::Rotate::Response> /*resp*/)
+    void handle_rotate(const std::shared_ptr<data_tamer_tools::srv::Rotate::Request> req, std::shared_ptr<data_tamer_tools::srv::Rotate::Response> resp)
     {
         if (!req || req->directory.empty())
         {
+            resp->success = false;
             RCLCPP_WARN(get_logger(), "Rotate request has empty 'directory'; ignoring.");
             return;
         }
@@ -46,6 +47,7 @@ class LogRotationCoordinator : public rclcpp::Node
         std::filesystem::create_directories(req->directory, ec);
         if (ec)
         {
+            resp->success = false;
             RCLCPP_ERROR(get_logger(), "Failed to create directory '%s': %s", req->directory.c_str(), ec.message().c_str());
             return;
         }
@@ -54,6 +56,7 @@ class LogRotationCoordinator : public rclcpp::Node
         msg.directory = req->directory;
         pub_->publish(msg);
 
+        resp->success = true;
         RCLCPP_INFO(get_logger(), "Published rotation request -> directory='%s' on '%s'", msg.directory.c_str(), rotate_topic_.c_str());
         // If your Rotate.srv has response fields (e.g., bool ok/string msg), you could set them here.
         // We intentionally don't touch the response to stay compatible with minimal definitions.
