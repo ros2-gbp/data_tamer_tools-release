@@ -1,12 +1,10 @@
-image: ros:jazzy
-
 stages:
   - build_and_test
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-build_and_test:
+.build_and_test_template:
   stage: build_and_test
   
   # Run on merge requests to main and on changes to main
@@ -21,12 +19,12 @@ build_and_test:
     - cd /ros_ws
     
     # Source ROS 2 environment
-    - source /opt/ros/jazzy/setup.bash
+    - source /opt/ros/$ROS_DISTRO/setup.bash
     
     # Install dependencies
     - apt-get update
     - rosdep update
-    - rosdep install --from-paths src --ignore-src -y --rosdistro jazzy
+    - rosdep install --from-paths src --ignore-src -y --rosdistro $ROS_DISTRO
   
   script:
     # Build the workspace
@@ -54,3 +52,14 @@ build_and_test:
       junit: test_results/**/*.xml
     expire_in: 1 week
 
+build_and_test:jazzy:
+  extends: .build_and_test_template
+  image: ros:jazzy
+  variables:
+    ROS_DISTRO: jazzy
+
+build_and_test:rolling:
+  extends: .build_and_test_template
+  image: ros:rolling
+  variables:
+    ROS_DISTRO: rolling
