@@ -119,32 +119,6 @@ McapSink::McapSink(std::string const& filepath, Format fmt, Compression compress
     openFile(resolved, o);
 }
 
-data_tamer_tools::McapSink::McapSink(const rclcpp::Node::SharedPtr& node, const std::string& filepath, const mcap::McapWriterOptions& options, Format fmt,
-                                     bool append_timestamp)
-  : format_(fmt), append_timestamp_(append_timestamp)
-{
-    base_filename_ = std::filesystem::path(filepath).filename().string();
-    auto resolved = applyTimestampIfNeeded(filepath);
-    openFile(resolved, options);
-    setupRotationControl(node);
-}
-
-data_tamer_tools::McapSink::McapSink(const rclcpp::Node::SharedPtr& node, const std::string& filepath, Format fmt, Compression compression,
-                                     std::optional<uint64_t> chunk_size, bool append_timestamp)
-  : format_(fmt), append_timestamp_(append_timestamp)
-{
-    base_filename_ = std::filesystem::path(filepath).filename().string();
-
-    auto opts = makeOptions(fmt, compression, /*chunk*/ chunk_size.value_or(1024 * 768));
-    if (chunk_size.has_value() && *chunk_size == 0)
-    {
-        opts.noChunking = true;
-    }
-    auto resolved = applyTimestampIfNeeded(filepath);
-    openFile(resolved, opts);
-    setupRotationControl(node);
-}
-
 void data_tamer_tools::McapSink::openFile(std::string const& filepath, const mcap::McapWriterOptions& options)
 {
     std::scoped_lock lk(mutex_);
@@ -197,26 +171,6 @@ McapSink::~McapSink()
     {
         writer_->close();
     }
-}
-
-void data_tamer_tools::McapSink::setupRotationControl(const rclcpp::Node::SharedPtr& node)
-{
-    // Param name: rotate_topic (empty => disable)
-    // default: "/data_tamer/rotate_mcap" (change if you prefer)
-    const std::string topic = node->declare_parameter<std::string>("rotate_topic", "/data_tamer/rotate_dir");
-    if (topic.empty())
-        return;
-
-    rclcpp::QoS qos(1);
-    qos.transient_local().reliable();
-
-    rotate_sub_ = node->create_subscription<data_tamer_tools::msg::LogDir>(topic, qos,
-                                                                           [this](data_tamer_tools::msg::LogDir::SharedPtr msg)
-                                                                           {
-                                                                               if (!msg)
-                                                                                   return;
-                                                                               rotateToDirectory(msg->directory);
-                                                                           });
 }
 
 void data_tamer_tools::McapSink::rotateToDirectory(const std::string& new_dir)
