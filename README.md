@@ -6,7 +6,7 @@ Tools for working with DataTamer data in ROS2, providing Foxglove integration an
 
 This package provides five main tools:
 - **Foxglove Relay**: Real-time visualization of DataTamer data through Foxglove Studio
-- **MCAP Sink**: Store DataTamer data in MCAP (MessagePack) format for efficient storage and playback
+- **MCAP Sink**: Store DataTamer data in MCAP (MessagePack) format for efficient storage and playback, with rotation hooks for regular and lifecycle ROS nodes
 - **MCAP Converter**: Convert DataTamer-encoded MCAP files to Protobuf-encoded MCAP files for Foxglove compatibility
 - **Rosout Logger**: Record ROS log messages (`/rosout`) to MCAP files with Foxglove Log schema
 - **Log Rotation Coordinator**: Synchronize log directory rotation across multiple MCAP loggers
@@ -119,11 +119,11 @@ ros2 run data_tamer_tools foxglove_relay --ros-args \
 Stores DataTamer data in MCAP (MessagePack) format for efficient storage and playback.
 
 **Features:**
-- Multiple compression options (None, LZ4, Zstd)
+- Multiple compression options (None, Lz4, Zstd)
 - Configurable chunk sizes
 - Thread-safe operations
 - Integration with DataTamer sink system
-- **Log rotation support**: When initialized with a ROS node, automatically subscribes to rotation topic
+- **Log rotation support**: When initialized with a regular node, lifecycle node, or explicit node interfaces, automatically subscribes to the rotation topic
 - **Synchronized rotation**: Multiple MCAP sinks can rotate to new directories simultaneously
 
 **Basic Usage:**
@@ -133,7 +133,7 @@ Stores DataTamer data in MCAP (MessagePack) format for efficient storage and pla
 // Create MCAP sink (standalone)
 auto mcap_sink = std::make_shared<data_tamer_tools::McapSink>(
     "/path/to/file.mcap", 
-    data_tamer_tools::Format::Protobuf,
+    data_tamer_tools::McapSink::Format::Protobuf,
     data_tamer_tools::McapSink::Compression::Zstd, 
     1024  // chunk size
 );
@@ -147,12 +147,12 @@ channel->addDataSink(mcap_sink);
 ```cpp
 #include <data_tamer_tools/sinks/mcap_sink.hpp>
 
-// Create MCAP sink with ROS node for rotation support
+// Create MCAP sink with a regular ROS node for rotation support
 auto node = std::make_shared<rclcpp::Node>("my_node");
 auto mcap_sink = std::make_shared<data_tamer_tools::McapSink>(
     node,
     "/initial/path/data.mcap",
-    data_tamer_tools::Format::Protobuf,
+    data_tamer_tools::McapSink::Format::Protobuf,
     data_tamer_tools::McapSink::Compression::Zstd
 );
 
@@ -168,17 +168,38 @@ channel->addDataSink(mcap_sink);
 // 4. Re-register all channels and continue recording
 ```
 
+**Lifecycle Node Usage:**
+```cpp
+#include <data_tamer_tools/sinks/mcap_sink.hpp>
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
+
+auto lifecycle_node = std::make_shared<rclcpp_lifecycle::LifecycleNode>("my_lifecycle_node");
+auto mcap_sink = std::make_shared<data_tamer_tools::McapSink>(
+    lifecycle_node,
+    "/initial/path/data.mcap",
+    data_tamer_tools::McapSink::Format::Protobuf,
+    data_tamer_tools::McapSink::Compression::Zstd
+);
+```
+
+**Supported Rotation-Aware Constructor Inputs:**
+- `std::shared_ptr<rclcpp::Node>`
+- `std::shared_ptr<rclcpp_lifecycle::LifecycleNode>`
+- `data_tamer_tools::McapSink::NodeInterfaces` for advanced integrations that only expose node parameter/topic interfaces
+
+The `rotate_topic` parameter is declared on whichever node you pass to `McapSink`. If you are integrating from a lifecycle-based package, add `rclcpp_lifecycle` to your package dependencies as well.
+
 **Parameters:**
 - `rotate_topic` (string, default: "/data_tamer/rotate_dir"): Topic to subscribe for rotation commands
 
 **Compression Options:**
 - `Compression::None`: No compression
-- `Compression::LZ4`: Fast compression
+- `Compression::Lz4`: Fast compression
 - `Compression::Zstd`: High compression ratio
 
 **Format Options:**
-- `Format::Json`: JSON encoding with JSON schema
-- `Format::Protobuf`: Protocol Buffers encoding (recommended for Foxglove compatibility)
+- `McapSink::Format::Json`: JSON encoding with JSON schema
+- `McapSink::Format::Protobuf`: Protocol Buffers encoding (recommended for Foxglove compatibility)
 
 ### 3. MCAP Converter (`mcap_converter`)
 
@@ -540,7 +561,7 @@ def generate_launch_description():
 
 auto mcap_sink = std::make_shared<data_tamer_tools::McapSink>(
     "/tmp/example.mcap", 
-    data_tamer_tools::Format::Protobuf,
+    data_tamer_tools::McapSink::Format::Protobuf,
     data_tamer_tools::McapSink::Compression::None, 
     1024
 );
@@ -567,7 +588,7 @@ public:
         auto mcap_sink = std::make_shared<data_tamer_tools::McapSink>(
             shared_from_this(),  // Pass the node for rotation
             "/initial/logs/robot_data.mcap",
-            data_tamer_tools::Format::Protobuf,
+            data_tamer_tools::McapSink::Format::Protobuf,
             data_tamer_tools::McapSink::Compression::Zstd
         );
         
