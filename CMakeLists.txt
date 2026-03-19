@@ -14,6 +14,7 @@ endif()
 find_package(ament_cmake QUIET)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
 find_package(data_tamer_cpp REQUIRED)
 find_package(data_tamer_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
@@ -26,7 +27,20 @@ find_package(foxglove_sdk_vendor REQUIRED)
 set(mcap_LIBRARIES mcap_vendor::mcap)
 set(mcap_INCLUDE_DIRS ${mcap_vendor_INCLUDE_DIRS})
 find_package(Protobuf REQUIRED)
-find_library(PROTOBUF_SHARED_LIB NAMES protobuf PATHS /usr/lib/x86_64-linux-gnu NO_DEFAULT_PATH)
+
+set(_protobuf_lib_paths "")
+if(CMAKE_LIBRARY_ARCHITECTURE)
+  list(APPEND _protobuf_lib_paths
+    "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}"
+    "/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+endif()
+list(APPEND _protobuf_lib_paths "/usr/lib" "/usr/lib64" "/lib" "/lib64")
+
+find_library(PROTOBUF_SHARED_LIB NAMES protobuf
+  PATHS ${_protobuf_lib_paths}
+  NO_DEFAULT_PATH
+  REQUIRED)
+
 
 find_package(nlohmann_json REQUIRED)
 
@@ -68,6 +82,7 @@ target_include_directories(mcap_sink
 rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
 add_dependencies(mcap_sink ${PROJECT_NAME})
 target_link_libraries(mcap_sink
+  ${rclcpp_lifecycle_TARGETS}
   ${data_tamer_cpp_TARGETS}
   ${nlohmann_json_LIBRARIES}
   ${mcap_LIBRARIES}
@@ -186,7 +201,14 @@ install(
 )
 
 ament_export_targets(${PROJECT_NAME}Targets)
-ament_export_dependencies(data_tamer_cpp rclcpp rclcpp_components nlohmann_json foxglove_sdk_vendor sensor_msgs geographic_msgs)
+ament_export_dependencies(data_tamer_cpp
+                          rclcpp
+                          rclcpp_components
+                          rclcpp_lifecycle
+                          nlohmann_json
+                          foxglove_sdk_vendor
+                          sensor_msgs
+                          geographic_msgs)
 ament_export_libraries(mcap_sink foxglove_relay)
 ament_package()
 
