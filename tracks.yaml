@@ -52,4 +52,5 @@ tracks:
     ros_distro: rolling
     vcs_type: git
     vcs_uri: https://gitlab.com/jlack/data_tamer_tools.git
-    version: :{auto}
+    version: 0.4.0
+    version_saved: :{auto}
