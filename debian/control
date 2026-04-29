@@ -1,0 +1,12 @@
+Source: ros-lyrical-data-tamer-tools
+Section: misc
+Priority: optional
+Maintainer: Jordan Lack <jlack1987@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libprotobuf-dev, libprotoc-dev, nlohmann-json3-dev, protobuf-compiler, ros-lyrical-ament-cmake, ros-lyrical-ament-cmake-clang-format <!nocheck>, ros-lyrical-ament-cmake-cppcheck <!nocheck>, ros-lyrical-ament-cmake-gtest <!nocheck>, ros-lyrical-ament-cmake-lint-cmake <!nocheck>, ros-lyrical-ament-index-cpp <!nocheck>, ros-lyrical-ament-lint <!nocheck>, ros-lyrical-backward-ros, ros-lyrical-data-tamer-cpp, ros-lyrical-data-tamer-msgs, ros-lyrical-foxglove-sdk-vendor, ros-lyrical-geographic-msgs, ros-lyrical-mcap-vendor, ros-lyrical-rcl-interfaces, ros-lyrical-rclcpp, ros-lyrical-rclcpp-components, ros-lyrical-rclcpp-lifecycle, ros-lyrical-rosidl-default-generators, ros-lyrical-sensor-msgs, ros-lyrical-ros-workspace, ros-lyrical-rosidl-typesupport-fastrtps-c, ros-lyrical-rosidl-typesupport-fastrtps-cpp
+Homepage: https://index.ros.org/p/data_tamer_tools/#lyrical
+Standards-Version: 3.9.2
+
+Package: ros-lyrical-data-tamer-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libprotobuf-dev, libprotoc-dev, nlohmann-json3-dev, protobuf-compiler, ros-lyrical-backward-ros, ros-lyrical-data-tamer-cpp, ros-lyrical-data-tamer-msgs, ros-lyrical-foxglove-sdk-vendor, ros-lyrical-geographic-msgs, ros-lyrical-mcap-vendor, ros-lyrical-rcl-interfaces, ros-lyrical-rclcpp, ros-lyrical-rclcpp-components, ros-lyrical-rclcpp-lifecycle, ros-lyrical-sensor-msgs, ros-lyrical-ros-workspace
+Description: Set of tools for using Foxglove with data tamer
