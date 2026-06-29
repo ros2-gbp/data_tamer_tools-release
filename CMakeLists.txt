@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.28)
 project(data_tamer_tools)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,9 +20,15 @@ find_package(data_tamer_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(mcap_vendor REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
-find_package(backward_ros REQUIRED)
+find_package(backward_ros QUIET)
+if(NOT backward_ros_FOUND)
+  message(STATUS "backward_ros not found, skipping dependency")
+endif()
 find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(geographic_msgs REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(foxglove_sdk_vendor REQUIRED)
 set(mcap_LIBRARIES mcap_vendor::mcap)
 set(mcap_INCLUDE_DIRS ${mcap_vendor_INCLUDE_DIRS})
@@ -53,10 +59,15 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 add_library(${PROJECT_NAME}_tools SHARED
   src/helpers.cpp
+  src/foxglove_utils.cpp
   src/ros_topic_discovery.cpp)
 target_link_libraries(${PROJECT_NAME}_tools
   ${rclcpp_TARGETS}
   ${data_tamer_cpp_TARGETS}
+  foxglove_sdk_vendor::foxglove_sdk
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  ${visualization_msgs_TARGETS}
   ${nlohmann_json_LIBRARIES}
   ${PROTOBUF_SHARED_LIB}
   ${mcap_LIBRARIES})
@@ -90,7 +101,10 @@ target_link_libraries(mcap_sink
   ${PROTOBUF_SHARED_LIB}
   ${cpp_typesupport_target})
 
-add_library(foxglove_relay SHARED src/foxglove_relay.cpp)
+add_library(foxglove_relay SHARED
+  src/foxglove_datatamer_relays.cpp
+  src/foxglove_relay.cpp
+  src/foxglove_typed_relays.cpp)
 rclcpp_components_register_node(foxglove_relay PLUGIN "data_tamer_tools::DtRos2ToFoxgloveBridge" EXECUTABLE foxglove_relay_node)
 add_dependencies(foxglove_relay ${PROJECT_NAME})
 target_link_libraries(foxglove_relay
@@ -102,6 +116,8 @@ target_link_libraries(foxglove_relay
   ${rcl_interfaces_TARGETS}
   ${sensor_msgs_TARGETS}
   ${geographic_msgs_TARGETS}
+  ${tf2_msgs_TARGETS}
+  ${visualization_msgs_TARGETS}
   ${PROJECT_NAME}_tools
   ${PROTOBUF_SHARED_LIB}
   ${cpp_typesupport_target})
@@ -207,8 +223,11 @@ ament_export_dependencies(data_tamer_cpp
                           rclcpp_lifecycle
                           nlohmann_json
                           foxglove_sdk_vendor
+                          geometry_msgs
                           sensor_msgs
-                          geographic_msgs)
+                          geographic_msgs
+                          tf2_msgs
+                          visualization_msgs)
 ament_export_libraries(mcap_sink foxglove_relay)
 ament_package()
 
@@ -249,6 +268,40 @@ if(BUILD_TESTING)
 
     add_test(NAME helpers_test COMMAND $<TARGET_FILE:helpers_test>)
     add_test(NAME mcap_sink_test COMMAND $<TARGET_FILE:mcap_sink_test>)
+
+    add_executable(foxglove_utils_test
+        test/foxglove_utils.cpp)
+    gtest_discover_tests(foxglove_utils_test DISCOVERY_MODE PRE_TEST)
+    target_include_directories(foxglove_utils_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+    target_link_libraries(foxglove_utils_test
+        ${PROJECT_NAME}_tools
+        GTest::gtest_main)
+
+    add_executable(foxglove_datatamer_relays_test
+        test/foxglove_datatamer_relays.cpp)
+    gtest_discover_tests(foxglove_datatamer_relays_test DISCOVERY_MODE PRE_TEST)
+    target_include_directories(foxglove_datatamer_relays_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+    target_link_libraries(foxglove_datatamer_relays_test
+        foxglove_relay
+        ${ament_index_cpp_TARGETS}
+        ${data_tamer_msgs_TARGETS}
+        ${rclcpp_TARGETS}
+        GTest::gtest_main)
+
+    add_executable(foxglove_typed_relays_test
+        test/foxglove_typed_relays.cpp)
+    gtest_discover_tests(foxglove_typed_relays_test DISCOVERY_MODE PRE_TEST)
+    target_include_directories(foxglove_typed_relays_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+    target_link_libraries(foxglove_typed_relays_test
+        foxglove_relay
+        GTest::gtest_main)
+
+    add_test(NAME foxglove_utils_test COMMAND $<TARGET_FILE:foxglove_utils_test>)
+    add_test(NAME foxglove_datatamer_relays_test COMMAND $<TARGET_FILE:foxglove_datatamer_relays_test>)
+    add_test(NAME foxglove_typed_relays_test COMMAND $<TARGET_FILE:foxglove_typed_relays_test>)
 
     find_package(ament_cmake_gtest REQUIRED)
 
