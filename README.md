@@ -1,5 +1,28 @@
 ## data_tamer_tools (jazzy) - 0.11.0-1
 
+The packages in the `data_tamer_tools` repository were released into the `jazzy` distro by running `/home/jlack/.local/bin/bloom-release --rosdistro jazzy --track rolling data_tamer_tools` on `Tue, 25 Aug 2026 14:58:54 -0000`
+
+The `data_tamer_tools` package was released.
+
+Version of package(s) in repository `data_tamer_tools`:
+
+- upstream repository: https://gitlab.com/jlack/data_tamer_tools.git
+- release repository: https://github.com/ros2-gbp/data_tamer_tools-release.git
+- rosdistro version: `0.4.0-1`
+- old version: `0.4.0-2`
+- new version: `0.11.0-1`
+
+Versions of tools used:
+
+- bloom version: `0.14.3`
+- catkin_pkg version: `1.1.0`
+- rosdep version: `0.26.0`
+- rosdistro version: `0.8.3`
+- vcstools version: `0.1.42`
+
+
+## data_tamer_tools (jazzy) - 0.11.0-1
+
 The packages in the `data_tamer_tools` repository were released into the `jazzy` distro by running `/home/jlack/.local/bin/bloom-release --rosdistro jazzy --track lyrical data_tamer_tools` on `Tue, 25 Aug 2026 14:54:43 -0000`
 
 The `data_tamer_tools` package was released.
