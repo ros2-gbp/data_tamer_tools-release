@@ -1,6 +1,6 @@
 #include <data_tamer_tools/foxglove_typed_relays.hpp>
 
-#include <foxglove/schemas.hpp>
+#include <foxglove/messages.hpp>
 #include <geographic_msgs/msg/geo_path.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <gtest/gtest.h>
@@ -31,7 +31,7 @@ TEST(FoxgloveTypedRelaysTest, GeoPathToGeoJsonBuildsLineStartGoalAndFiltersInval
     goal.pose.position.longitude = -123.45;
     path.poses.push_back(goal);
 
-    foxglove::schemas::Color color{ 0.1, 0.2, 0.3, 0.4 };
+    foxglove::messages::Color color{ 0.1, 0.2, 0.3, 0.4 };
 
     const auto geojson_text = data_tamer_tools::geoPathToGeoJson(path, "/geo/path", color);
     const auto geojson = nlohmann::json::parse(geojson_text);
@@ -140,7 +140,7 @@ TEST(FoxgloveTypedRelaysTest, SceneEntityFromMarkerUsesLinePrimitiveForArrowPoin
     EXPECT_TRUE(entity->arrows.empty());
     ASSERT_EQ(entity->lines.size(), 1u);
     const auto& line = entity->lines.front();
-    EXPECT_EQ(line.type, foxglove::schemas::LinePrimitive::LineType::LINE_STRIP);
+    EXPECT_EQ(line.type, foxglove::messages::LinePrimitive::LineType::LINE_STRIP);
     EXPECT_DOUBLE_EQ(line.thickness, 0.05);
     ASSERT_EQ(line.points.size(), 2u);
     EXPECT_DOUBLE_EQ(line.points.at(0).x, 1.0);
