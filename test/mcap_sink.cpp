@@ -1,3 +1,4 @@
+#include <barrier>
 #include <mcap/mcap.hpp>
 #include <gtest/gtest.h>
 #include <data_tamer/data_tamer.hpp>
@@ -5,6 +6,7 @@
 #include <data_tamer_tools/sinks/mcap_sink.hpp>
 #include <filesystem>
 #include <nlohmann/json.hpp>
+#include <rclcpp/rclcpp.hpp>
 #include <thread>
 
 class McapSinkTest : public ::testing::Test
@@ -820,6 +822,106 @@ class McapSinkRotateNoRosTest : public ::testing::Test
         std::this_thread::sleep_for(std::chrono::milliseconds(120));
     }
 };
+
+class McapSinkRotateRosTest : public ::testing::Test
+{
+  protected:
+    static void SetUpTestSuite()
+    {
+        if (!rclcpp::ok())
+        {
+            int argc = 0;
+            char** argv = nullptr;
+            rclcpp::init(argc, argv);
+            initialized_rclcpp_ = true;
+        }
+    }
+
+    static void TearDownTestSuite()
+    {
+        if (initialized_rclcpp_ && rclcpp::ok())
+        {
+            rclcpp::shutdown();
+        }
+    }
+
+    void TearDown() override
+    {
+        for (auto& p : trash_)
+        {
+            std::error_code ec;
+            std::filesystem::remove_all(p, ec);
+        }
+    }
+
+    std::vector<std::filesystem::path> trash_;
+    static bool initialized_rclcpp_;
+};
+
+bool McapSinkRotateRosTest::initialized_rclcpp_ = false;
+
+TEST_F(McapSinkRotateRosTest, ConcurrentSinksOnSiblingSubNodesReuseRotateTopicParameter)
+{
+    namespace fs = std::filesystem;
+    fs::path dir = fs::temp_directory_path() / "mcap_rotate_ros_sibling_subnodes";
+    fs::create_directories(dir);
+    trash_.push_back(dir);
+
+    constexpr size_t kThreadCount = 8;
+    constexpr size_t kRounds = 8;
+
+    for (size_t round = 0; round < kRounds; ++round)
+    {
+        auto parent = std::make_shared<rclcpp::Node>("mcap_sink_rotate_sibling_subnodes_" + std::to_string(round));
+
+        std::vector<rclcpp::Node::SharedPtr> subnodes;
+        subnodes.reserve(kThreadCount);
+        for (size_t i = 0; i < kThreadCount; ++i)
+        {
+            subnodes.push_back(parent->create_sub_node("worker_" + std::to_string(i)));
+        }
+
+        std::barrier sync_point(static_cast<std::ptrdiff_t>(kThreadCount));
+        std::vector<std::thread> threads;
+        std::vector<std::exception_ptr> exceptions(kThreadCount);
+        std::vector<data_tamer_tools::McapSink::SharedPtr> sinks(kThreadCount);
+        threads.reserve(kThreadCount);
+
+        for (size_t i = 0; i < kThreadCount; ++i)
+        {
+            threads.emplace_back(
+                [&, i]
+                {
+                    sync_point.arrive_and_wait();
+                    try
+                    {
+                        sinks[i] = std::make_shared<data_tamer_tools::McapSink>(
+                            subnodes[i], (dir / ("round_" + std::to_string(round) + "_" + std::to_string(i) + ".mcap")).string(),
+                            data_tamer_tools::McapSink::Format::Json, data_tamer_tools::McapSink::Compression::None, std::optional<uint64_t>{ 0 });
+                    }
+                    catch (...)
+                    {
+                        exceptions[i] = std::current_exception();
+                    }
+                });
+        }
+
+        for (auto& thread : threads)
+        {
+            thread.join();
+        }
+
+        for (size_t i = 0; i < kThreadCount; ++i)
+        {
+            EXPECT_EQ(exceptions[i], nullptr) << "thread " << i << " threw while constructing a sink";
+            ASSERT_NE(sinks[i], nullptr);
+            sinks[i]->stopRecording();
+        }
+
+        ASSERT_TRUE(parent->has_parameter("rotate_topic"));
+        EXPECT_EQ(parent->get_parameter("rotate_topic").as_string(), "/data_tamer/rotate_dir");
+    }
+}
 
 TEST_F(McapSinkRotateNoRosTest, RotateToNewDir_WritesThere)
 {
