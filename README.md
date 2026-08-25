@@ -5,7 +5,7 @@ Tools for working with DataTamer data in ROS2, providing Foxglove integration an
 ## Overview
 
 This package provides five main tools:
-- **Foxglove Relay**: Real-time visualization of DataTamer data through Foxglove Studio
+- **Foxglove Relay**: Real-time visualization of DataTamer data and selected ROS message types through Foxglove Studio
 - **MCAP Sink**: Store DataTamer data in MCAP (MessagePack) format for efficient storage and playback, with rotation hooks for regular and lifecycle ROS nodes
 - **MCAP Converter**: Convert DataTamer-encoded MCAP files to Protobuf-encoded MCAP files for Foxglove compatibility
 - **Rosout Logger**: Record ROS log messages (`/rosout`) to MCAP files with Foxglove Log schema
@@ -21,7 +21,10 @@ A ROS2 component that bridges DataTamer data to Foxglove Studio for real-time vi
 - Automatically discovers DataTamer topics (`/data_tamer/schema`, `/data_tamer/schemas`, `/data_tamer/snapshot`)
 - Automatically discovers `sensor_msgs/msg/NavSatFix` topics and relays each source as its own `foxglove.LocationFix` channel (Map track)
 - Automatically discovers `geographic_msgs/msg/GeoPath` topics and relays each source as `foxglove.GeoJSON` (Map overlay)
-- Optional MCAP recording of selected Foxglove schemas (`foxglove.LocationFix` + `foxglove.GeoJSON`) for offline playback in Foxglove
+- Automatically discovers `sensor_msgs/msg/LaserScan` topics and relays each source as `foxglove.LaserScan`
+- Automatically discovers `visualization_msgs/msg/MarkerArray` topics and relays each source as `foxglove.SceneUpdate`
+- Automatically discovers `tf2_msgs/msg/TFMessage` topics and relays each source as `foxglove.FrameTransform`
+- Optional MCAP recording of selected Foxglove schemas (`foxglove.LocationFix`, `foxglove.GeoJSON`, `foxglove.LaserScan`, `foxglove.SceneUpdate`, `foxglove.FrameTransform`) for offline playback in Foxglove
 - Supports both JSON and Protocol Buffers encoding for Foxglove visualization
 - Converts DataTamer schemas to JSON Schema or Protocol Buffers descriptor format
 - Creates Foxglove WebSocket server for real-time data streaming
@@ -40,7 +43,7 @@ ros2 run data_tamer_tools foxglove_relay
 
 # Or with custom parameters
 ros2 run data_tamer_tools foxglove_relay --ros-args \
-  -p host:=127.0.0.1 \
+  -p host:=0.0.0.0 \
   -p port:=8765 \
   -p use_protobuf:=true \
   -p eviction_ttl_sec:=900 \
@@ -52,7 +55,7 @@ ros2 run data_tamer_tools foxglove_relay --ros-args \
 **Parameters:**
 
 **WebSocket Server Configuration:**
-- `host` (string, default: "127.0.0.1"): WebSocket server host address
+- `host` (string, default: "0.0.0.0"): WebSocket server host address
 - `port` (int, default: 8765): WebSocket server port number
 
 **Data Encoding:**
@@ -69,17 +72,41 @@ ros2 run data_tamer_tools foxglove_relay --ros-args \
   - How often the relay scans for new DataTamer topics to subscribe to
 - `navsat_ttl_sec` (int, default: 30): Time-to-live for NavSatFix sources; stale sources are pruned from the relay’s discovered LocationFix tracks
 - `geopath_ttl_sec` (int, default: 0): Time-to-live for GeoPath sources (0 disables pruning)
+- `laser_scan_ttl_sec` (int, default: 0): Time-to-live for LaserScan sources (0 disables pruning)
+- `scene_ttl_sec` (int, default: 0): Time-to-live for MarkerArray / SceneUpdate sources (0 disables pruning)
+- `tf_ttl_sec` (int, default: 0): Time-to-live for TFMessage / FrameTransform sources (0 disables pruning)
 - `navsat_qos` (string, default: "sensor"): QoS profile for NavSatFix subscriptions. Accepts `sensor` (or `sensor_data`), `system_default` (or `default`), `best_effort`, or `reliable`.
 - `location_fix_prefix` (string, default: "/locations"): Prefix for relayed per-source `foxglove.LocationFix` topics
 - `geojson_prefix` (string, default: "/geojson"): Prefix for relayed per-source `foxglove.GeoJSON` topics
+- `laser_scan_prefix` (string, default: "/scan"): Prefix for relayed per-source `foxglove.LaserScan` topics
+- `scene_prefix` (string, default: "/scene"): Prefix for relayed per-source `foxglove.SceneUpdate` topics
+- `transform_prefix` (string, default: "/transforms"): Prefix for relayed per-source `foxglove.FrameTransform` topics
 
-**Map Topic Mapping:**
+**Supported Relay Types:**
+
+| ROS topic type | Foxglove schema | Default prefix | Typical panel |
+| --- | --- | --- | --- |
+| `data_tamer_msgs/msg/Snapshot` | Raw channel (JSON Schema or Protobuf descriptors) | original channel name | Raw Messages / Plot |
+| `sensor_msgs/msg/NavSatFix` | `foxglove.LocationFix` | `/locations` | Map |
+| `geographic_msgs/msg/GeoPath` | `foxglove.GeoJSON` | `/geojson` | Map |
+| `sensor_msgs/msg/LaserScan` | `foxglove.LaserScan` | `/scan` | 3D |
+| `visualization_msgs/msg/MarkerArray` | `foxglove.SceneUpdate` | `/scene` | 3D |
+| `tf2_msgs/msg/TFMessage` | `foxglove.FrameTransform` | `/transforms` | 3D |
+
+**MarkerArray Notes:**
+- `visualization_msgs/msg/Marker::ADD`, `DELETE`, and `DELETEALL` are relayed
+- Supported marker geometries are `ARROW`, `CUBE`, `SPHERE`, `SPHERE_LIST`, `CYLINDER`, `LINE_STRIP`, `LINE_LIST`, and `TEXT_VIEW_FACING`
+
+**Topic Mapping:**
 - A discovered `sensor_msgs/msg/NavSatFix` topic like `/gps/fix` is relayed as a per-source `foxglove.LocationFix` topic at `/locations/gps/fix` (prefix is configurable via `location_fix_prefix`)
 - A discovered `geographic_msgs/msg/GeoPath` topic like `/planner/path` is relayed as `foxglove.GeoJSON` at `/geojson/planner/path` (prefix is configurable via `geojson_prefix`)
+- A discovered `sensor_msgs/msg/LaserScan` topic like `/oa_sonar_scan` is relayed as `foxglove.LaserScan` at `/scan/oa_sonar_scan` (prefix is configurable via `laser_scan_prefix`)
+- A discovered `visualization_msgs/msg/MarkerArray` topic like `/oa_markers` is relayed as `foxglove.SceneUpdate` at `/scene/oa_markers` (prefix is configurable via `scene_prefix`)
+- A discovered `tf2_msgs/msg/TFMessage` topic like `/tf` is relayed as `foxglove.FrameTransform` at `/transforms/tf` (prefix is configurable via `transform_prefix`)
 - Each GeoPath is rendered as GeoJSON (FeatureCollection) containing a LineString for the path and Point features for start/goal; colors are deterministic per topic
 
 **Relay MCAP Recording (Foxglove schemas only):**
-- `enable_mcap` (bool, default: false): Record `foxglove.LocationFix` + `foxglove.GeoJSON` to an MCAP file
+- `enable_mcap` (bool, default: false): Record relayed `foxglove.LocationFix`, `foxglove.GeoJSON`, `foxglove.LaserScan`, `foxglove.SceneUpdate`, and `foxglove.FrameTransform` channels to an MCAP file
 - `logdir` (string, default: "."): Directory for the initial relay MCAP file
 - `mcap_filename` (string, default: "foxglove_relay.mcap"): Relay MCAP filename
 - `mcap_append_timestamp` (bool, default: true): Prefix timestamp like `YYYY-MM-DD_HH-MM-SS_` to the relay MCAP filename
@@ -102,12 +129,16 @@ ros2 run data_tamer_tools foxglove_relay --ros-args \
 3. Add a **Map** panel to visualize:
    - GPS tracks from `foxglove.LocationFix` topics (default prefix: `/locations/...`)
    - Paths/overlays from `foxglove.GeoJSON` topics (default prefix: `/geojson/...`)
-4. Add a **Raw Messages** panel to inspect the relayed DataTamer channels
+4. Add a **3D** panel to visualize:
+   - `foxglove.LaserScan` topics (default prefix: `/scan/...`)
+   - `foxglove.SceneUpdate` topics (default prefix: `/scene/...`)
+   - `foxglove.FrameTransform` topics (default prefix: `/transforms/...`)
+5. Add a **Raw Messages** panel to inspect the relayed DataTamer channels
 
 **Foxglove Studio Connection (Offline):**
 1. Enable relay MCAP recording (`enable_mcap:=true`) or use the bringup launch file options
 2. In Foxglove Studio: File → Open local file → select the relay MCAP file
-3. Add a **Map** panel (GeoJSON overlays + LocationFix tracks) and any other panels you need
+3. Add a **Map** panel (GeoJSON overlays + LocationFix tracks), a **3D** panel (LaserScan + SceneUpdate + FrameTransform), and any other panels you need
 
 **Encoding Notes:**
 - **Protocol Buffers mode** (`use_protobuf:=true`): More efficient, smaller payloads, better performance
@@ -420,14 +451,14 @@ The launch file creates a multi-threaded composable node container (`component_c
 - `rotation_coordinator` (bool, default: True): Enable/disable Log Rotation Coordinator component
 
 **Foxglove Relay Parameters:**
-- `relay_host` (string, default: "127.0.0.1"): WebSocket server host address
+- `relay_host` (string, default: "0.0.0.0"): WebSocket server host address
 - `relay_port` (int, default: 8765): WebSocket server port (0-65535)
 - `relay_eviction_ttl_sec` (int, default: 900): Time-to-live for stale publishers in seconds (15 minutes)
 - `relay_eviction_period_sec` (int, default: 30): Interval for checking stale publishers
 - `relay_discover_sec` (int, default: 5): Period for rediscovering DataTamer snapshot topics
 - `relay_enable_rosout` (bool, default: true): Enable relaying /rosout to Foxglove
 - `relay_use_protobuf` (bool, default: true): Use Protobuf encoding instead of JSON
-- `relay_enable_mcap` (bool, default: false): Record `foxglove.LocationFix` + `foxglove.GeoJSON` to an MCAP file from the relay
+- `relay_enable_mcap` (bool, default: false): Record relayed `foxglove.LocationFix`, `foxglove.GeoJSON`, `foxglove.LaserScan`, `foxglove.SceneUpdate`, and `foxglove.FrameTransform` channels to an MCAP file from the relay
 - `relay_mcap_filename` (string, default: "foxglove_relay.mcap"): Relay MCAP filename (written under `logdir`)
 - `relay_mcap_append_timestamp` (bool, default: true): Prefix timestamp like `YYYY-MM-DD_HH-MM-SS_` to the relay MCAP filename
 - `relay_mcap_truncate` (bool, default: false): Overwrite relay MCAP file on collision
