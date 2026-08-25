@@ -3,7 +3,7 @@
 #include <data_tamer_tools/foxglove_source_registry.hpp>
 
 #include <foxglove/context.hpp>
-#include <foxglove/schemas.hpp>
+#include <foxglove/messages.hpp>
 #include <geographic_msgs/msg/geo_path.hpp>
 #include <rclcpp/callback_group.hpp>
 #include <rclcpp/clock.hpp>
@@ -25,41 +25,41 @@
 
 namespace data_tamer_tools
 {
-struct NavSatFixSource : TimedRelaySource<sensor_msgs::msg::NavSatFix, foxglove::schemas::LocationFixChannel>
+struct NavSatFixSource : TimedRelaySource<sensor_msgs::msg::NavSatFix, foxglove::messages::LocationFixChannel>
 {
     using SharedPtr = std::shared_ptr<NavSatFixSource>;
 
-    foxglove::schemas::Color color;
+    foxglove::messages::Color color;
 };
 
 using NavSatFixRegistry = TimedSourceRegistry<NavSatFixSource>;
 
-struct GeoPathSource : TimedRelaySource<geographic_msgs::msg::GeoPath, foxglove::schemas::GeoJSONChannel>
+struct GeoPathSource : TimedRelaySource<geographic_msgs::msg::GeoPath, foxglove::messages::GeoJSONChannel>
 {
     using SharedPtr = std::shared_ptr<GeoPathSource>;
 
-    foxglove::schemas::Color color;
+    foxglove::messages::Color color;
     std::mutex latest_mtx;
-    std::optional<foxglove::schemas::GeoJSON> latest_geojson;
+    std::optional<foxglove::messages::GeoJSON> latest_geojson;
 };
 
 using GeoPathRegistry = TimedSourceRegistry<GeoPathSource>;
 
-struct LaserScanSource : TimedRelaySource<sensor_msgs::msg::LaserScan, foxglove::schemas::LaserScanChannel>
+struct LaserScanSource : TimedRelaySource<sensor_msgs::msg::LaserScan, foxglove::messages::LaserScanChannel>
 {
     using SharedPtr = std::shared_ptr<LaserScanSource>;
 };
 
 using LaserScanRegistry = TimedSourceRegistry<LaserScanSource>;
 
-struct MarkerArraySource : TimedRelaySource<visualization_msgs::msg::MarkerArray, foxglove::schemas::SceneUpdateChannel>
+struct MarkerArraySource : TimedRelaySource<visualization_msgs::msg::MarkerArray, foxglove::messages::SceneUpdateChannel>
 {
     using SharedPtr = std::shared_ptr<MarkerArraySource>;
 };
 
 using MarkerArrayRegistry = TimedSourceRegistry<MarkerArraySource>;
 
-struct TfMessageSource : TimedRelaySource<tf2_msgs::msg::TFMessage, foxglove::schemas::FrameTransformChannel>
+struct TfMessageSource : TimedRelaySource<tf2_msgs::msg::TFMessage, foxglove::messages::FrameTransformChannel>
 {
     using SharedPtr = std::shared_ptr<TfMessageSource>;
 };
@@ -94,11 +94,11 @@ struct TypedRelayRegistries
     TfMessageRegistry& tf_registry;
 };
 
-std::string geoPathToGeoJson(const geographic_msgs::msg::GeoPath& msg, const std::string& topic, const foxglove::schemas::Color& color,
+std::string geoPathToGeoJson(const geographic_msgs::msg::GeoPath& msg, const std::string& topic, const foxglove::messages::Color& color,
                              const rclcpp::Logger* logger = nullptr);
 
-std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visualization_msgs::msg::Marker& marker, const std::string& default_frame,
-                                                                    const rclcpp::Logger* logger = nullptr, const rclcpp::Clock* clock = nullptr);
+std::optional<foxglove::messages::SceneEntity> sceneEntityFromMarker(const visualization_msgs::msg::Marker& marker, const std::string& default_frame,
+                                                                     const rclcpp::Logger* logger = nullptr, const rclcpp::Clock* clock = nullptr);
 
 class TypedRelayManager
 {

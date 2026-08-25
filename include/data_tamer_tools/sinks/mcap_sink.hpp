@@ -161,7 +161,16 @@ class McapSink : public DataTamer::DataSinkBase
         auto params = node_interfaces.get_node_parameters_interface();
         auto topics = node_interfaces.get_node_topics_interface();
 
-        std::string topic = params->declare_parameter("rotate_topic", rclcpp::ParameterValue{ std::string("/data_tamer/rotate_dir") }).get<std::string>();
+        std::string topic;
+        try
+        {
+            // Another sink on the same underlying node may declare this first.
+            topic = params->declare_parameter("rotate_topic", rclcpp::ParameterValue{ std::string("/data_tamer/rotate_dir") }).get<std::string>();
+        }
+        catch (const rclcpp::exceptions::ParameterAlreadyDeclaredException&)
+        {
+            topic = params->get_parameter("rotate_topic").as_string();
+        }
 
         if (topic.empty())
         {
