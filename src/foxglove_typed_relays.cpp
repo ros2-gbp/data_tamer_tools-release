@@ -93,7 +93,7 @@ void TypedRelayManager::ensureNavSatFixSource(const std::string& topic)
     source->foxglove_topic = joinTopicPrefix(options_.location_fix_prefix, topic);
     source->color = topicColor(source->foxglove_topic);
 
-    auto channel = foxglove::schemas::LocationFixChannel::create(source->foxglove_topic, context_);
+    auto channel = foxglove::messages::LocationFixChannel::create(source->foxglove_topic, context_);
     if (!channel.has_value())
     {
         RCLCPP_WARN(node_.get_logger(), "Failed to create LocationFix channel '%s': %s", source->foxglove_topic.c_str(), foxglove::strerror(channel.error()));
@@ -122,7 +122,7 @@ void TypedRelayManager::ensureGeoPathSource(const std::string& topic)
     source->foxglove_topic = joinTopicPrefix(options_.geojson_prefix, topic);
     source->color = topicColor(source->foxglove_topic);
 
-    auto channel = foxglove::schemas::GeoJSONChannel::create(source->foxglove_topic, context_);
+    auto channel = foxglove::messages::GeoJSONChannel::create(source->foxglove_topic, context_);
     if (!channel.has_value())
     {
         RCLCPP_WARN(node_.get_logger(), "Failed to create GeoJSON channel '%s': %s", source->foxglove_topic.c_str(), foxglove::strerror(channel.error()));
@@ -153,7 +153,7 @@ void TypedRelayManager::replayLatchedGeoJson(uint64_t channel_id, std::optional<
             continue;
         }
 
-        std::optional<foxglove::schemas::GeoJSON> geojson;
+        std::optional<foxglove::messages::GeoJSON> geojson;
         {
             std::scoped_lock lk(source->latest_mtx);
             geojson = source->latest_geojson;
@@ -189,7 +189,7 @@ void TypedRelayManager::ensureLaserScanSource(const std::string& topic)
     source->topic = topic;
     source->foxglove_topic = joinTopicPrefix(options_.laser_scan_prefix, topic);
 
-    auto channel = foxglove::schemas::LaserScanChannel::create(source->foxglove_topic, context_);
+    auto channel = foxglove::messages::LaserScanChannel::create(source->foxglove_topic, context_);
     if (!channel.has_value())
     {
         RCLCPP_WARN(node_.get_logger(), "Failed to create LaserScan channel '%s': %s", source->foxglove_topic.c_str(), foxglove::strerror(channel.error()));
@@ -216,7 +216,7 @@ void TypedRelayManager::ensureMarkerArraySource(const std::string& topic)
     source->topic = topic;
     source->foxglove_topic = joinTopicPrefix(options_.scene_prefix, topic);
 
-    auto channel = foxglove::schemas::SceneUpdateChannel::create(source->foxglove_topic, context_);
+    auto channel = foxglove::messages::SceneUpdateChannel::create(source->foxglove_topic, context_);
     if (!channel.has_value())
     {
         RCLCPP_WARN(node_.get_logger(), "Failed to create SceneUpdate channel '%s': %s", source->foxglove_topic.c_str(), foxglove::strerror(channel.error()));
@@ -244,7 +244,7 @@ void TypedRelayManager::ensureTfMessageSource(const std::string& topic)
     source->topic = topic;
     source->foxglove_topic = joinTopicPrefix(options_.transform_prefix, topic);
 
-    auto channel = foxglove::schemas::FrameTransformChannel::create(source->foxglove_topic, context_);
+    auto channel = foxglove::messages::FrameTransformChannel::create(source->foxglove_topic, context_);
     if (!channel.has_value())
     {
         RCLCPP_WARN(node_.get_logger(), "Failed to create FrameTransform channel '%s': %s", source->foxglove_topic.c_str(), foxglove::strerror(channel.error()));
@@ -278,7 +278,7 @@ void TypedRelayManager::onNavSatFix(const sensor_msgs::msg::NavSatFix& msg, cons
     const uint64_t log_time = (stamp.nanoseconds() > 0) ? static_cast<uint64_t>(stamp.nanoseconds()) : static_cast<uint64_t>(now.nanoseconds());
 
     const std::string frame = msg.header.frame_id.empty() ? source->topic : msg.header.frame_id;
-    const foxglove::schemas::LocationFix fix = buildLocationFix(msg, frame, source->color);
+    const foxglove::messages::LocationFix fix = buildLocationFix(msg, frame, source->color);
 
     const foxglove::FoxgloveError result = source->chan->log(fix, log_time);
     if (result != foxglove::FoxgloveError::Ok)
@@ -288,7 +288,7 @@ void TypedRelayManager::onNavSatFix(const sensor_msgs::msg::NavSatFix& msg, cons
     }
 }
 
-std::string geoPathToGeoJson(const geographic_msgs::msg::GeoPath& msg, const std::string& topic, const foxglove::schemas::Color& color, const rclcpp::Logger* logger)
+std::string geoPathToGeoJson(const geographic_msgs::msg::GeoPath& msg, const std::string& topic, const foxglove::messages::Color& color, const rclcpp::Logger* logger)
 {
     nlohmann::json feature_collection;
     feature_collection["type"] = "FeatureCollection";
@@ -367,7 +367,7 @@ void TypedRelayManager::onGeoPath(const geographic_msgs::msg::GeoPath& msg, cons
     const rclcpp::Time stamp{ msg.header.stamp };
     const uint64_t log_time = (stamp.nanoseconds() > 0) ? static_cast<uint64_t>(stamp.nanoseconds()) : static_cast<uint64_t>(now.nanoseconds());
 
-    foxglove::schemas::GeoJSON out{};
+    foxglove::messages::GeoJSON out{};
     const auto logger = node_.get_logger();
     out.geojson = data_tamer_tools::geoPathToGeoJson(msg, source->topic, source->color, &logger);
     {
@@ -401,7 +401,7 @@ void TypedRelayManager::onLaserScan(const sensor_msgs::msg::LaserScan& msg, cons
     const rclcpp::Time stamp{ msg.header.stamp };
     const uint64_t log_time = (stamp.nanoseconds() > 0) ? static_cast<uint64_t>(stamp.nanoseconds()) : static_cast<uint64_t>(now.nanoseconds());
 
-    const foxglove::schemas::LaserScan out = toFoxgloveLaserScan(msg, source->topic);
+    const foxglove::messages::LaserScan out = toFoxgloveLaserScan(msg, source->topic);
     const foxglove::FoxgloveError result = source->chan->log(out, log_time);
     if (result != foxglove::FoxgloveError::Ok)
     {
@@ -410,10 +410,10 @@ void TypedRelayManager::onLaserScan(const sensor_msgs::msg::LaserScan& msg, cons
     }
 }
 
-std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visualization_msgs::msg::Marker& marker, const std::string& default_frame,
-                                                                    const rclcpp::Logger* logger, const rclcpp::Clock* clock)
+std::optional<foxglove::messages::SceneEntity> sceneEntityFromMarker(const visualization_msgs::msg::Marker& marker, const std::string& default_frame,
+                                                                     const rclcpp::Logger* logger, const rclcpp::Clock* clock)
 {
-    foxglove::schemas::SceneEntity entity;
+    foxglove::messages::SceneEntity entity;
     entity.timestamp = toFoxgloveTimestamp(marker.header.stamp);
     entity.frame_id = marker.header.frame_id.empty() ? default_frame : marker.header.frame_id;
     entity.id = markerEntityId(marker);
@@ -426,8 +426,8 @@ std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visual
         {
             if (marker.points.size() >= 2)
             {
-                foxglove::schemas::LinePrimitive line;
-                line.type = foxglove::schemas::LinePrimitive::LineType::LINE_STRIP;
+                foxglove::messages::LinePrimitive line;
+                line.type = foxglove::messages::LinePrimitive::LineType::LINE_STRIP;
                 line.pose = toFoxglovePose(marker.pose);
                 line.thickness = std::max(marker.scale.x, 1.0e-4);
                 line.color = toFoxgloveColor(marker.color);
@@ -439,7 +439,7 @@ std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visual
             }
             else
             {
-                foxglove::schemas::ArrowPrimitive arrow;
+                foxglove::messages::ArrowPrimitive arrow;
                 arrow.pose = toFoxglovePose(marker.pose);
                 arrow.shaft_length = std::max(marker.scale.x * 0.7, 1.0e-4);
                 arrow.shaft_diameter = std::max(marker.scale.y, 1.0e-4);
@@ -453,7 +453,7 @@ std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visual
 
         case visualization_msgs::msg::Marker::CUBE:
         {
-            foxglove::schemas::CubePrimitive cube;
+            foxglove::messages::CubePrimitive cube;
             cube.pose = toFoxglovePose(marker.pose);
             cube.size = toFoxgloveVector3(marker.scale);
             cube.color = toFoxgloveColor(marker.color);
@@ -463,7 +463,7 @@ std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visual
 
         case visualization_msgs::msg::Marker::SPHERE:
         {
-            foxglove::schemas::SpherePrimitive sphere;
+            foxglove::messages::SpherePrimitive sphere;
             sphere.pose = toFoxglovePose(marker.pose);
             sphere.size = toFoxgloveVector3(marker.scale);
             sphere.color = toFoxgloveColor(marker.color);
@@ -479,7 +479,7 @@ std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visual
             }
             for (size_t i = 0; i < marker.points.size(); ++i)
             {
-                foxglove::schemas::SpherePrimitive sphere;
+                foxglove::messages::SpherePrimitive sphere;
                 geometry_msgs::msg::Pose pose = marker.pose;
                 pose.position = transformPoint(marker.pose, marker.points.at(i));
                 sphere.pose = toFoxglovePose(pose);
@@ -492,7 +492,7 @@ std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visual
 
         case visualization_msgs::msg::Marker::CYLINDER:
         {
-            foxglove::schemas::CylinderPrimitive cylinder;
+            foxglove::messages::CylinderPrimitive cylinder;
             cylinder.pose = toFoxglovePose(marker.pose);
             cylinder.size = toFoxgloveVector3(marker.scale);
             cylinder.bottom_scale = 1.0;
@@ -509,9 +509,9 @@ std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visual
             {
                 return std::nullopt;
             }
-            foxglove::schemas::LinePrimitive line;
-            line.type = marker.type == visualization_msgs::msg::Marker::LINE_LIST ? foxglove::schemas::LinePrimitive::LineType::LINE_LIST :
-                                                                                    foxglove::schemas::LinePrimitive::LineType::LINE_STRIP;
+            foxglove::messages::LinePrimitive line;
+            line.type = marker.type == visualization_msgs::msg::Marker::LINE_LIST ? foxglove::messages::LinePrimitive::LineType::LINE_LIST :
+                                                                                    foxglove::messages::LinePrimitive::LineType::LINE_STRIP;
             line.pose = toFoxglovePose(marker.pose);
             line.thickness = std::max(marker.scale.x, 1.0e-4);
             line.color = toFoxgloveColor(marker.color);
@@ -529,7 +529,7 @@ std::optional<foxglove::schemas::SceneEntity> sceneEntityFromMarker(const visual
             {
                 return std::nullopt;
             }
-            foxglove::schemas::TextPrimitive text;
+            foxglove::messages::TextPrimitive text;
             text.pose = toFoxglovePose(marker.pose);
             text.billboard = true;
             text.font_size = std::max(marker.scale.z, 1.0e-4);
@@ -559,7 +559,7 @@ void TypedRelayManager::onMarkerArray(const visualization_msgs::msg::MarkerArray
     const rclcpp::Time now = node_.now();
     source->last_seen_ns.store(now.nanoseconds(), std::memory_order_relaxed);
 
-    foxglove::schemas::SceneUpdate update;
+    foxglove::messages::SceneUpdate update;
     uint64_t log_time = static_cast<uint64_t>(now.nanoseconds());
     const auto logger = node_.get_logger();
     const auto clock = node_.get_clock();
@@ -574,18 +574,18 @@ void TypedRelayManager::onMarkerArray(const visualization_msgs::msg::MarkerArray
 
         if (marker.action == visualization_msgs::msg::Marker::DELETEALL)
         {
-            foxglove::schemas::SceneEntityDeletion deletion;
+            foxglove::messages::SceneEntityDeletion deletion;
             deletion.timestamp = marker_timestamp;
-            deletion.type = foxglove::schemas::SceneEntityDeletion::SceneEntityDeletionType::ALL;
+            deletion.type = foxglove::messages::SceneEntityDeletion::SceneEntityDeletionType::ALL;
             update.deletions.push_back(std::move(deletion));
             continue;
         }
 
         if (marker.action == visualization_msgs::msg::Marker::DELETE)
         {
-            foxglove::schemas::SceneEntityDeletion deletion;
+            foxglove::messages::SceneEntityDeletion deletion;
             deletion.timestamp = marker_timestamp;
-            deletion.type = foxglove::schemas::SceneEntityDeletion::SceneEntityDeletionType::MATCHING_ID;
+            deletion.type = foxglove::messages::SceneEntityDeletion::SceneEntityDeletionType::MATCHING_ID;
             deletion.id = markerEntityId(marker);
             update.deletions.push_back(std::move(deletion));
             continue;
@@ -638,7 +638,7 @@ void TypedRelayManager::onTfMessage(const tf2_msgs::msg::TFMessage& msg, const T
         {
             log_time = static_cast<uint64_t>(transform.header.stamp.sec) * 1000000000ULL + static_cast<uint64_t>(transform.header.stamp.nanosec);
         }
-        const foxglove::schemas::FrameTransform out = toFoxgloveFrameTransform(transform);
+        const foxglove::messages::FrameTransform out = toFoxgloveFrameTransform(transform);
         const foxglove::FoxgloveError result = source->chan->log(out, log_time);
         if (result != foxglove::FoxgloveError::Ok)
         {

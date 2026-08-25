@@ -4,6 +4,7 @@
 #include <builtin_interfaces/msg/time.hpp>
 #include <foxglove/foxglove.hpp>
 #include <foxglove/mcap.hpp>
+#include <foxglove/messages.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
@@ -22,22 +23,22 @@
 
 namespace data_tamer_tools
 {
-foxglove::schemas::LocationFix::PositionCovarianceType toFoxgloveCovarianceType(uint8_t covariance_type);
+foxglove::messages::LocationFix::PositionCovarianceType toFoxgloveCovarianceType(uint8_t covariance_type);
 
-std::optional<foxglove::schemas::Timestamp> toFoxgloveTimestamp(const builtin_interfaces::msg::Time& stamp);
-std::optional<foxglove::schemas::Duration> toFoxgloveDuration(const builtin_interfaces::msg::Duration& duration);
+std::optional<foxglove::messages::Timestamp> toFoxgloveTimestamp(const builtin_interfaces::msg::Time& stamp);
+std::optional<foxglove::messages::Duration> toFoxgloveDuration(const builtin_interfaces::msg::Duration& duration);
 
-foxglove::schemas::Vector3 toFoxgloveVector3(const geometry_msgs::msg::Vector3& v);
-foxglove::schemas::Vector3 toFoxgloveVector3(const geometry_msgs::msg::Point& p);
-foxglove::schemas::Point3 toFoxglovePoint3(const geometry_msgs::msg::Point& p);
-foxglove::schemas::Quaternion toFoxgloveQuaternion(const geometry_msgs::msg::Quaternion& q);
-foxglove::schemas::Pose toFoxglovePose(const geometry_msgs::msg::Pose& pose);
-foxglove::schemas::Color toFoxgloveColor(const std_msgs::msg::ColorRGBA& color);
-foxglove::schemas::FrameTransform toFoxgloveFrameTransform(const geometry_msgs::msg::TransformStamped& transform);
-foxglove::schemas::LaserScan toFoxgloveLaserScan(const sensor_msgs::msg::LaserScan& msg, const std::string& fallback_frame_id);
-foxglove::schemas::LocationFix buildLocationFix(const sensor_msgs::msg::NavSatFix& msg, const std::string& frame_id, const foxglove::schemas::Color& color);
+foxglove::messages::Vector3 toFoxgloveVector3(const geometry_msgs::msg::Vector3& v);
+foxglove::messages::Vector3 toFoxgloveVector3(const geometry_msgs::msg::Point& p);
+foxglove::messages::Point3 toFoxglovePoint3(const geometry_msgs::msg::Point& p);
+foxglove::messages::Quaternion toFoxgloveQuaternion(const geometry_msgs::msg::Quaternion& q);
+foxglove::messages::Pose toFoxglovePose(const geometry_msgs::msg::Pose& pose);
+foxglove::messages::Color toFoxgloveColor(const std_msgs::msg::ColorRGBA& color);
+foxglove::messages::FrameTransform toFoxgloveFrameTransform(const geometry_msgs::msg::TransformStamped& transform);
+foxglove::messages::LaserScan toFoxgloveLaserScan(const sensor_msgs::msg::LaserScan& msg, const std::string& fallback_frame_id);
+foxglove::messages::LocationFix buildLocationFix(const sensor_msgs::msg::NavSatFix& msg, const std::string& frame_id, const foxglove::messages::Color& color);
 
-foxglove::schemas::Color topicColor(const std::string& topic);
+foxglove::messages::Color topicColor(const std::string& topic);
 std::string joinTopicPrefix(const std::string& prefix, const std::string& topic);
 std::string markerEntityId(const visualization_msgs::msg::Marker& marker);
 
