@@ -10,6 +10,7 @@ variables:
   # Run on merge requests to main and on changes to main
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_COMMIT_BRANCH == "main"'
   
   before_script:
@@ -32,8 +33,6 @@ variables:
     
     # Source the built workspace
     - source install/setup.bash
-    # Allow slow versions of cppcheck
-    - export AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1
     # Run tests
     - colcon test --packages-select data_tamer_tools
     
@@ -58,8 +57,13 @@ build_and_test:jazzy:
   variables:
     ROS_DISTRO: jazzy
 
-build_and_test:rolling:
+build_and_test:lyrical:
   extends: .build_and_test_template
-  image: ros:rolling
+  image: ros:lyrical
   variables:
-    ROS_DISTRO: rolling
+    ROS_DISTRO: lyrical
+# build_and_test:rolling:
+#   extends: .build_and_test_template
+#   image: ros:rolling
+#   variables:
+#     ROS_DISTRO: rolling
