@@ -84,7 +84,7 @@ def generate_launch_description():
                               description='Output directory for log files'),
 
         # Foxglove Bridge parameters
-        DeclareLaunchArgument('relay_host', default_value='127.0.0.1',
+        DeclareLaunchArgument('relay_host', default_value='0.0.0.0',
                               description='Foxglove WebSocket server host address'),
         DeclareLaunchArgument('relay_port', default_value='8765',
                               description='Foxglove WebSocket server port (0-65535)'),
