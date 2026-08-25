@@ -9,9 +9,9 @@
 
 namespace data_tamer_tools
 {
-foxglove::schemas::LocationFix::PositionCovarianceType toFoxgloveCovarianceType(uint8_t covariance_type)
+foxglove::messages::LocationFix::PositionCovarianceType toFoxgloveCovarianceType(uint8_t covariance_type)
 {
-    using CovType = foxglove::schemas::LocationFix::PositionCovarianceType;
+    using CovType = foxglove::messages::LocationFix::PositionCovarianceType;
     switch (covariance_type)
     {
         case sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_APPROXIMATED:
@@ -25,72 +25,72 @@ foxglove::schemas::LocationFix::PositionCovarianceType toFoxgloveCovarianceType(
     }
 }
 
-std::optional<foxglove::schemas::Timestamp> toFoxgloveTimestamp(const builtin_interfaces::msg::Time& stamp)
+std::optional<foxglove::messages::Timestamp> toFoxgloveTimestamp(const builtin_interfaces::msg::Time& stamp)
 {
     if (stamp.sec == 0 && stamp.nanosec == 0)
     {
         return std::nullopt;
     }
-    return foxglove::schemas::Timestamp{ static_cast<uint32_t>(stamp.sec), static_cast<uint32_t>(stamp.nanosec) };
+    return foxglove::messages::Timestamp{ static_cast<uint32_t>(stamp.sec), static_cast<uint32_t>(stamp.nanosec) };
 }
 
-std::optional<foxglove::schemas::Duration> toFoxgloveDuration(const builtin_interfaces::msg::Duration& duration)
+std::optional<foxglove::messages::Duration> toFoxgloveDuration(const builtin_interfaces::msg::Duration& duration)
 {
     if (duration.sec == 0 && duration.nanosec == 0)
     {
         return std::nullopt;
     }
-    return foxglove::schemas::Duration{ static_cast<int32_t>(duration.sec), static_cast<uint32_t>(duration.nanosec) };
+    return foxglove::messages::Duration{ static_cast<int32_t>(duration.sec), static_cast<uint32_t>(duration.nanosec) };
 }
 
-foxglove::schemas::Vector3 toFoxgloveVector3(const geometry_msgs::msg::Vector3& v)
+foxglove::messages::Vector3 toFoxgloveVector3(const geometry_msgs::msg::Vector3& v)
 {
-    return foxglove::schemas::Vector3{ v.x, v.y, v.z };
+    return foxglove::messages::Vector3{ v.x, v.y, v.z };
 }
 
-foxglove::schemas::Vector3 toFoxgloveVector3(const geometry_msgs::msg::Point& p)
+foxglove::messages::Vector3 toFoxgloveVector3(const geometry_msgs::msg::Point& p)
 {
-    return foxglove::schemas::Vector3{ p.x, p.y, p.z };
+    return foxglove::messages::Vector3{ p.x, p.y, p.z };
 }
 
-foxglove::schemas::Point3 toFoxglovePoint3(const geometry_msgs::msg::Point& p)
+foxglove::messages::Point3 toFoxglovePoint3(const geometry_msgs::msg::Point& p)
 {
-    return foxglove::schemas::Point3{ p.x, p.y, p.z };
+    return foxglove::messages::Point3{ p.x, p.y, p.z };
 }
 
-foxglove::schemas::Quaternion toFoxgloveQuaternion(const geometry_msgs::msg::Quaternion& q)
+foxglove::messages::Quaternion toFoxgloveQuaternion(const geometry_msgs::msg::Quaternion& q)
 {
-    return foxglove::schemas::Quaternion{ q.x, q.y, q.z, q.w };
+    return foxglove::messages::Quaternion{ q.x, q.y, q.z, q.w };
 }
 
-foxglove::schemas::Pose toFoxglovePose(const geometry_msgs::msg::Pose& pose)
+foxglove::messages::Pose toFoxglovePose(const geometry_msgs::msg::Pose& pose)
 {
-    foxglove::schemas::Pose out;
+    foxglove::messages::Pose out;
     out.position = toFoxgloveVector3(pose.position);
     out.orientation = toFoxgloveQuaternion(pose.orientation);
     return out;
 }
 
-foxglove::schemas::Color toFoxgloveColor(const std_msgs::msg::ColorRGBA& color)
+foxglove::messages::Color toFoxgloveColor(const std_msgs::msg::ColorRGBA& color)
 {
-    return foxglove::schemas::Color{ color.r, color.g, color.b, color.a };
+    return foxglove::messages::Color{ color.r, color.g, color.b, color.a };
 }
 
-foxglove::schemas::FrameTransform toFoxgloveFrameTransform(const geometry_msgs::msg::TransformStamped& transform)
+foxglove::messages::FrameTransform toFoxgloveFrameTransform(const geometry_msgs::msg::TransformStamped& transform)
 {
-    foxglove::schemas::FrameTransform out;
+    foxglove::messages::FrameTransform out;
     out.timestamp = toFoxgloveTimestamp(transform.header.stamp);
     out.parent_frame_id = transform.header.frame_id;
     out.child_frame_id = transform.child_frame_id;
-    out.translation = foxglove::schemas::Vector3{ transform.transform.translation.x, transform.transform.translation.y, transform.transform.translation.z };
+    out.translation = foxglove::messages::Vector3{ transform.transform.translation.x, transform.transform.translation.y, transform.transform.translation.z };
     out.rotation =
-        foxglove::schemas::Quaternion{ transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z, transform.transform.rotation.w };
+        foxglove::messages::Quaternion{ transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z, transform.transform.rotation.w };
     return out;
 }
 
-foxglove::schemas::LaserScan toFoxgloveLaserScan(const sensor_msgs::msg::LaserScan& msg, const std::string& fallback_frame_id)
+foxglove::messages::LaserScan toFoxgloveLaserScan(const sensor_msgs::msg::LaserScan& msg, const std::string& fallback_frame_id)
 {
-    foxglove::schemas::LaserScan out;
+    foxglove::messages::LaserScan out;
     out.timestamp = toFoxgloveTimestamp(msg.header.stamp);
     out.frame_id = msg.header.frame_id.empty() ? fallback_frame_id : msg.header.frame_id;
     out.start_angle = msg.angle_min;
@@ -108,12 +108,12 @@ foxglove::schemas::LaserScan toFoxgloveLaserScan(const sensor_msgs::msg::LaserSc
     return out;
 }
 
-foxglove::schemas::LocationFix buildLocationFix(const sensor_msgs::msg::NavSatFix& msg, const std::string& frame_id, const foxglove::schemas::Color& color)
+foxglove::messages::LocationFix buildLocationFix(const sensor_msgs::msg::NavSatFix& msg, const std::string& frame_id, const foxglove::messages::Color& color)
 {
-    foxglove::schemas::LocationFix fix{};
+    foxglove::messages::LocationFix fix{};
     if (msg.header.stamp.sec != 0 || msg.header.stamp.nanosec != 0)
     {
-        foxglove::schemas::Timestamp ts{ static_cast<uint32_t>(msg.header.stamp.sec), static_cast<uint32_t>(msg.header.stamp.nanosec) };
+        foxglove::messages::Timestamp ts{ static_cast<uint32_t>(msg.header.stamp.sec), static_cast<uint32_t>(msg.header.stamp.nanosec) };
         fix.timestamp = ts;
     }
     fix.frame_id = frame_id;
@@ -126,7 +126,7 @@ foxglove::schemas::LocationFix buildLocationFix(const sensor_msgs::msg::NavSatFi
     return fix;
 }
 
-foxglove::schemas::Color topicColor(const std::string& topic)
+foxglove::messages::Color topicColor(const std::string& topic)
 {
     static const std::array<std::array<double, 4>, 10> palette = { {
         { 0.976, 0.224, 0.224, 1.0 },
@@ -142,7 +142,7 @@ foxglove::schemas::Color topicColor(const std::string& topic)
     } };
 
     const size_t idx = std::hash<std::string>{}(topic) % palette.size();
-    foxglove::schemas::Color color{};
+    foxglove::messages::Color color{};
     color.r = palette[idx][0];
     color.g = palette[idx][1];
     color.b = palette[idx][2];

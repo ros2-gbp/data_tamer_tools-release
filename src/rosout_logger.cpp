@@ -17,7 +17,7 @@
 #include <mcap/reader.hpp>
 
 #include <foxglove/foxglove.hpp>
-#include <foxglove/schemas.hpp>
+#include <foxglove/messages.hpp>
 
 using namespace std::chrono_literals;
 
@@ -180,7 +180,7 @@ class RosoutLogger : public rclcpp::Node
         }
 
         // Register Foxglove Log schema & channel
-        foxglove::Schema fs = foxglove::schemas::Log::schema();
+        foxglove::Schema fs = foxglove::messages::Log::schema();
         schema_ = mcap::Schema(fs.name, fs.encoding, std::string((const char*)fs.data, fs.data_len));
         writer_->addSchema(schema_);
 
@@ -272,24 +272,24 @@ class RosoutLogger : public rclcpp::Node
 
     void onLog(const rcl_interfaces::msg::Log::SharedPtr msg)
     {
-        foxglove::schemas::Log out;
-        out.timestamp = foxglove::schemas::Timestamp{ static_cast<uint32_t>(msg->stamp.sec), static_cast<uint32_t>(msg->stamp.nanosec) };
+        foxglove::messages::Log out;
+        out.timestamp = foxglove::messages::Timestamp{ static_cast<uint32_t>(msg->stamp.sec), static_cast<uint32_t>(msg->stamp.nanosec) };
         out.level = [&]
         {
             switch (msg->level)
             {
                 case rcl_interfaces::msg::Log::DEBUG:
-                    return foxglove::schemas::Log::LogLevel::DEBUG;
+                    return foxglove::messages::Log::LogLevel::DEBUG;
                 case rcl_interfaces::msg::Log::INFO:
-                    return foxglove::schemas::Log::LogLevel::INFO;
+                    return foxglove::messages::Log::LogLevel::INFO;
                 case rcl_interfaces::msg::Log::WARN:
-                    return foxglove::schemas::Log::LogLevel::WARNING;
+                    return foxglove::messages::Log::LogLevel::WARNING;
                 case rcl_interfaces::msg::Log::ERROR:
-                    return foxglove::schemas::Log::LogLevel::ERROR;
+                    return foxglove::messages::Log::LogLevel::ERROR;
                 case rcl_interfaces::msg::Log::FATAL:
-                    return foxglove::schemas::Log::LogLevel::FATAL;
+                    return foxglove::messages::Log::LogLevel::FATAL;
                 default:
-                    return foxglove::schemas::Log::LogLevel::UNKNOWN;
+                    return foxglove::messages::Log::LogLevel::UNKNOWN;
             }
         }();
         out.message = msg->msg;
