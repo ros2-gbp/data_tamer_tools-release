@@ -10,7 +10,7 @@
 
 #include <foxglove/foxglove.hpp>
 #include <foxglove/mcap.hpp>
-#include <foxglove/server.hpp>
+#include <foxglove/websocket.hpp>
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -244,7 +244,7 @@ class DtRos2ToFoxgloveBridge : public rclcpp::Node
         if (enable_rosout)
         {
             // Create a typed Log channel (uses the built-in Log schema)
-            auto chRes = foxglove::schemas::LogChannel::create("/rosout", context_);
+            auto chRes = foxglove::messages::LogChannel::create("/rosout", context_);
             if (!chRes.has_value())
             {
                 RCLCPP_WARN(get_logger(), "Failed to create LogChannel /rosout: %s", foxglove::strerror(chRes.error()));
@@ -480,7 +480,7 @@ class DtRos2ToFoxgloveBridge : public rclcpp::Node
     rclcpp::Duration tf_ttl_{ 0, 0 };
     rclcpp::QoS navsat_qos_{ rclcpp::SensorDataQoS() };
 
-    std::optional<foxglove::schemas::LogChannel> rosout_chan_;
+    std::optional<foxglove::messages::LogChannel> rosout_chan_;
     rclcpp::Subscription<rcl_interfaces::msg::Log>::SharedPtr rosout_sub_;
 
     rclcpp::CallbackGroup::SharedPtr snapshot_callback_group_;
@@ -561,24 +561,24 @@ class DtRos2ToFoxgloveBridge : public rclcpp::Node
         }
 
         // Build foxglove.schemas.Log
-        foxglove::schemas::Log ev{};
-        ev.timestamp = foxglove::schemas::Timestamp{ static_cast<uint32_t>(m.stamp.sec), static_cast<uint32_t>(m.stamp.nanosec) };
+        foxglove::messages::Log ev{};
+        ev.timestamp = foxglove::messages::Timestamp{ static_cast<uint32_t>(m.stamp.sec), static_cast<uint32_t>(m.stamp.nanosec) };
         ev.level = [&]
         {
             switch (m.level)
             {
                 case rcl_interfaces::msg::Log::DEBUG:
-                    return foxglove::schemas::Log::LogLevel::DEBUG;
+                    return foxglove::messages::Log::LogLevel::DEBUG;
                 case rcl_interfaces::msg::Log::INFO:
-                    return foxglove::schemas::Log::LogLevel::INFO;
+                    return foxglove::messages::Log::LogLevel::INFO;
                 case rcl_interfaces::msg::Log::WARN:
-                    return foxglove::schemas::Log::LogLevel::WARNING;
+                    return foxglove::messages::Log::LogLevel::WARNING;
                 case rcl_interfaces::msg::Log::ERROR:
-                    return foxglove::schemas::Log::LogLevel::ERROR;
+                    return foxglove::messages::Log::LogLevel::ERROR;
                 case rcl_interfaces::msg::Log::FATAL:
-                    return foxglove::schemas::Log::LogLevel::FATAL;
+                    return foxglove::messages::Log::LogLevel::FATAL;
                 default:
-                    return foxglove::schemas::Log::LogLevel::UNKNOWN;
+                    return foxglove::messages::Log::LogLevel::UNKNOWN;
             }
         }();
         ev.message = m.msg;
